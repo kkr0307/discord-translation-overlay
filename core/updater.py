@@ -3,7 +3,6 @@ import json
 import tempfile
 import os
 import threading
-from packaging import version # We can use standard packaging if available, but let's stick to simple string comparison if packaging isn't in requirements.
 
 def parse_version(v_str):
     # 'v1.0.1' -> [1, 0, 1]

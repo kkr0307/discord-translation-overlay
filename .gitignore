@@ -28,3 +28,4 @@ config.json
 
 # AI 에이전트 및 관리자용 상세 명세서
 PROJECT_SPEC.md
+v1.1.0_specification.md
