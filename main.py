@@ -104,17 +104,8 @@ class AppController(QObject):
         req_id = self.current_request_id
         
         # 추출된 텍스트가 전달되면 번역 전 임시 메시지 표시
-        # 드래그 영역과 텍스트 줄 수를 기반으로 폰트 크기 동적 계산
-        drag_height = bottom_y - y
-        num_lines = max(1, len(text.strip().splitlines()))
-        estimated_line_height = drag_height / num_lines
-        
-        font_multiplier = config.get("font_size_multiplier", 0.65)
-        font_min = config.get("font_size_min", 14)
-        font_max = config.get("font_size_max", 36)
-        
-        font_size = int(estimated_line_height * font_multiplier)
-        font_size = max(font_min, min(font_size, font_max)) # 너무 작거나 크지 않게 제한
+        # 설정에 지정된 고정 폰트 크기 사용
+        font_size = config.get("font_size", 16)
         
         offset_x = config.get("overlay_offset_x", 10)
         offset_y = config.get("overlay_offset_y", 10)

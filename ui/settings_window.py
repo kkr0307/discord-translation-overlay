@@ -8,7 +8,7 @@ class SettingsWindow(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.setFixedSize(350, 270)
+        self.setFixedSize(350, 310)
         
         self.config = load_config()
         self.languages = ["한국어", "English(US)", "日本語", "중국어", "스페인어", "프랑스어"]
@@ -125,6 +125,16 @@ class SettingsWindow(QWidget):
         tgt_layout.addWidget(self.tgt_combo)
         layout.addLayout(tgt_layout)
         
+        # Font Size
+        font_layout = QHBoxLayout()
+        self.font_size_label = QLabel()
+        self.font_size_combo = QComboBox()
+        self.font_size_combo.addItems([str(i) for i in [12, 14, 16, 18, 20, 24, 28, 32]])
+        self.font_size_combo.setCurrentText(str(self.config.get("font_size", 16)))
+        font_layout.addWidget(self.font_size_label)
+        font_layout.addWidget(self.font_size_combo)
+        layout.addLayout(font_layout)
+        
         # Open Live Window Button
         self.open_live_btn = QPushButton()
         self.open_live_btn.setObjectName("open_live_btn")
@@ -148,6 +158,7 @@ class SettingsWindow(QWidget):
         self.api_label.setText(texts["api_key"])
         self.src_label.setText(texts["src_lang"])
         self.tgt_label.setText(texts["tgt_lang"])
+        self.font_size_label.setText(texts["font_size"])
         self.open_live_btn.setText(texts.get("open_live", "실시간 번역창 열기"))
         self.save_btn.setText(texts["save"])
 
@@ -161,6 +172,7 @@ class SettingsWindow(QWidget):
         self.config["gemini_api_key"] = self.api_input.text().strip()
         self.config["source_lang"] = self.src_combo.currentText()
         self.config["target_lang"] = self.tgt_combo.currentText()
+        self.config["font_size"] = int(self.font_size_combo.currentText())
         save_config(self.config)
         self.settings_saved_signal.emit()
         QMessageBox.information(self, texts["save_title"], texts["save_success"])

@@ -20,6 +20,7 @@ DEFAULT_CONFIG = {
     "source_lang": "日本語",
     "target_lang": "한국어",
     "ui_lang": "한국어",
+    "font_size": 16,
 
     
     # 세부 설정값들 (Advanced Settings)
@@ -37,6 +38,7 @@ UI_TEXT = {
         "api_key": "API 키:",
         "src_lang": "탐지할 언어:",
         "tgt_lang": "번역결과 언어:",
+        "font_size": "글자 크기:",
         "save": "설정 저장",
         "save_success": "설정이 성공적으로 저장되었습니다.",
         "save_title": "저장 완료",
@@ -57,6 +59,7 @@ UI_TEXT = {
         "api_key": "API Key:",
         "src_lang": "Source Language:",
         "tgt_lang": "Target Language:",
+        "font_size": "Font Size:",
         "save": "Save Settings",
         "save_success": "Settings saved successfully.",
         "save_title": "Save Complete",
@@ -77,6 +80,7 @@ UI_TEXT = {
         "api_key": "API キー:",
         "src_lang": "検出言語:",
         "tgt_lang": "翻訳先言語:",
+        "font_size": "フォントサイズ:",
         "save": "設定を保存",
         "save_success": "設定が正常に保存されました。",
         "save_title": "保存完了",
