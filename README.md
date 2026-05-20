@@ -62,7 +62,7 @@ A lightweight, high-performance desktop application designed to translate text o
 ### 🛠 Tech Stack & Credits
 * **Framework:** Python, PyQt6, pynput, pyautogui, pyperclip
 * **AI Model:** Google Gemini 3.1 Flash-Lite (via `google-genai` SDK)
-* **Version:** v1.0.1
+* **Version:** v1.1.0
 
 ---
 
@@ -114,7 +114,7 @@ A lightweight, high-performance desktop application designed to translate text o
 ### 🛠 기술 스택 및 버전 정보
 * **프레임워크:** Python, PyQt6, pynput, pyautogui, pyperclip
 * **사용 AI 모델:** Google Gemini 3.1 Flash-Lite (공식 `google-genai` SDK 적용)
-* **버전:** v1.0.1
+* **버전:** v1.1.0
 
 ---
 
@@ -166,4 +166,4 @@ A lightweight, high-performance desktop application designed to translate text o
 ### 🛠 技術スタックとバージョン情報
 * **フレームワーク:** Python, PyQt6, pynput, pyautogui, pyperclip
 * **使用AIモデル:** Google Gemini 3.1 Flash-Lite (`google-genai` SDK)
-* **バージョン:** v1.0.1
+* **バージョン:** v1.1.0
