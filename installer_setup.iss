@@ -3,7 +3,7 @@
 AppId={{5E4C2F1A-987B-4D3E-A1C2-8B7C6D5E4F3A}
 ; 프로그램 기본 정보
 AppName=Discord Translation Overlay
-AppVersion=1.0
+AppVersion=1.1.1
 AppPublisher=Local Developer
 UninstallDisplayName=Discord Translation Overlay
 UninstallDisplayIcon={app}\DiscordTranslator.exe

@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 if not getattr(sys, 'frozen', False):
     load_dotenv()
 
-APP_VERSION = "v1.1.0"
+APP_VERSION = "v1.1.1"
 GITHUB_REPO = "kkr0307/discord-translation-overlay"
 
 # 실행 파일 권한 문제를 피하기 위해 사용자 홈 디렉토리 하위에 설정 폴더 생성
