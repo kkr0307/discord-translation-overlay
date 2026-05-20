@@ -61,11 +61,53 @@ class OverlayWindow(QWidget):
                 padding: {padding_v}px {padding_h}px;
                 font-family: 'Malgun Gothic', 'Segoe UI', sans-serif;
                 font-size: {font_size}px;
-                font-weight: 500;
+                font-weight: bold;
             }}
         """)
         
-        self.text_label.setText(text)
+        translation_lines = []
+        pronunciation_lines = []
+        current_mode = None
+        
+        for line in text.strip().split('\n'):
+            stripped = line.strip()
+            if stripped.startswith("[번역]"):
+                current_mode = "translation"
+                content = stripped.replace("[번역]", "").strip()
+                if content:
+                    translation_lines.append(content)
+                continue
+            elif stripped.startswith("[발음]"):
+                current_mode = "pronunciation"
+                content = stripped.replace("[발음]", "").strip()
+                if content:
+                    pronunciation_lines.append(content)
+                continue
+                
+            if current_mode == "translation":
+                translation_lines.append(stripped)
+            elif current_mode == "pronunciation":
+                pronunciation_lines.append(stripped)
+                
+        translation_html = "<br>".join([line for line in translation_lines if line])
+        pronunciation_html = "<br>".join([line for line in pronunciation_lines if line])
+                
+        if translation_html and pronunciation_html:
+            # 위 아래를 명확하게 구분하기 위해 구분선(border-top)과 여백을 추가
+            formatted_text = f"""
+            <div style='margin-bottom: 8px;'>{translation_html}</div>
+            <div style='
+                font-size: {max(11, int(font_size * 0.75))}px; 
+                color: #AAB8C2; 
+                font-weight: normal;
+                border-top: 1px solid rgba(255, 255, 255, 40);
+                padding-top: 8px;
+            '>{pronunciation_html}</div>
+            """
+            self.text_label.setText(formatted_text)
+        else:
+            self.text_label.setText(text.replace('\n', '<br>'))
+            
         self.adjustSize()
         
         # 팝업 박스의 "배경 테두리 상단"이 드래그 상단(y)과 일치하도록 오프셋 보정

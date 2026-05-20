@@ -25,3 +25,6 @@ dist/
 
 # 로컬 설정 파일 (혹시 프로젝트 내부에 생겼을 경우)
 config.json
+
+# AI 에이전트 및 관리자용 상세 명세서
+PROJECT_SPEC.md

@@ -6,6 +6,9 @@ from dotenv import load_dotenv
 # .env 로드 (개발용)
 load_dotenv()
 
+APP_VERSION = "v1.0.0"
+GITHUB_REPO = "kkr0307/discord-translation-overlay"
+
 # 실행 파일 권한 문제를 피하기 위해 사용자 홈 디렉토리 하위에 설정 폴더 생성
 CONFIG_DIR = Path.home() / ".discord_translator"
 CONFIG_FILE = CONFIG_DIR / "config.json"
@@ -38,7 +41,15 @@ UI_TEXT = {
         "translating": "번역 중...",
         "settings": "설정 (Settings)",
         "quit": "종료 (Quit)",
-        "window_title": "번역 설정"
+        "window_title": "번역 설정",
+        "open_live": "실시간 번역창 열기",
+        "live_title": "실시간 번역 (Live Translator)",
+        "live_src_ph": "번역할 내용을 입력하세요...",
+        "live_src_pron_ph": "원문의 발음이 여기에 표시됩니다.",
+        "live_tgt_ph": "번역 결과가 표시됩니다.",
+        "live_tgt_pron_ph": "번역된 결과의 발음이 여기에 표시됩니다.",
+        "live_translate_btn": "번역하기",
+        "live_copy_btn": "복사"
     },
     "English(US)": {
         "api_key": "API Key:",
@@ -50,7 +61,15 @@ UI_TEXT = {
         "translating": "Translating...",
         "settings": "Settings",
         "quit": "Quit",
-        "window_title": "Translation Settings"
+        "window_title": "Translation Settings",
+        "open_live": "Open Live Translator",
+        "live_title": "Live Translator",
+        "live_src_ph": "Enter text to translate...",
+        "live_src_pron_ph": "Pronunciation of the source text will appear here.",
+        "live_tgt_ph": "Translation result will appear here.",
+        "live_tgt_pron_ph": "Pronunciation of the translated text will appear here.",
+        "live_translate_btn": "Translate",
+        "live_copy_btn": "Copy"
     },
     "日本語": {
         "api_key": "API キー:",
@@ -62,7 +81,15 @@ UI_TEXT = {
         "translating": "翻訳中...",
         "settings": "設定 (Settings)",
         "quit": "終了 (Quit)",
-        "window_title": "翻訳設定"
+        "window_title": "翻訳設定",
+        "open_live": "リアルタイム翻訳を開く",
+        "live_title": "リアルタイム翻訳 (Live Translator)",
+        "live_src_ph": "翻訳する内容を入力してください...",
+        "live_src_pron_ph": "原文の発音がここに表示されます。",
+        "live_tgt_ph": "翻訳結果がここに表示されます。",
+        "live_tgt_pron_ph": "翻訳された結果の発音がここに表示されます。",
+        "live_translate_btn": "翻訳する",
+        "live_copy_btn": "コピー"
     }
 }
 
@@ -107,6 +134,30 @@ def save_config(config_data):
 
 def get_system_prompt(source_lang: str, target_lang: str) -> str:
     return (
-        f"디스코드/게임 중의 친근한 {source_lang} 대화(은어, 줄임말 포함)를 "
-        f"{target_lang} 구어체로 자연스럽게 번역해줘. 부가 설명 없이 번역 결과만 출력해."
+        f"디스코드/게임 중의 {source_lang} 대화를 {target_lang}로 번역해줘.\n"
+        f"조건 1: 의역을 배제하고 원문에 쓰인 단어들을 최대한 1:1 대응하여 직역할 것. 특히 원문의 어조(존댓말이면 존댓말, 반말이면 반말)를 원래 뉘앙스 그대로 유지할 것. (예: 반말/평서문인데 경어를 붙이지 말 것.)\n"
+        f"조건 2: 'ㅎㅇ', 'ㅋㅋ' 같은 인터넷 신조어나 초성 등은 임의로 정제하지 말고, {target_lang}의 비슷한 뉘앙스를 가진 슬랭으로 번역할 것.\n"
+        f"조건 3: 원문의 {source_lang} 발음을 {target_lang} 문자로 소리나는 대로 적어줄 것.\n"
+        f"조건 4: 원문에 여러 줄의 문장이 있다면, 번역과 발음 모두 원본의 줄바꿈 위치를 똑같이 유지할 것.\n"
+        f"출력 형식은 반드시 아래와 같이 [번역]과 [발음] 블록으로 나누어 출력해 (다른 부가 설명 금지):\n"
+        f"[번역]\n"
+        f"(원문의 줄바꿈을 유지한 번역 내용)\n"
+        f"[발음]\n"
+        f"(원문의 줄바꿈을 유지한 발음 표기)"
+    )
+
+def get_live_translation_prompt(source_lang: str, target_lang: str, ui_lang: str) -> str:
+    return (
+        f"입력된 {source_lang} 문장을 {target_lang}로 번역해줘.\n"
+        f"조건 1: 원문의 뉘앙스와 어조를 절대 임의로 바꾸지 말 것. (예: 반말이면 반말로, 경어면 경어로. '번역 기능 테스트 중'처럼 평서문/반말인 경우 '데스/마스' 등의 경어를 붙이지 말고 그대로 번역할 것.)\n"
+        f"조건 2: 'ㅎㅇ', 'ㅋㅋ', 초성 등의 인터넷 신조어나 줄임말은 평범한 말(예: 안녕)로 정제하지 말고, {target_lang}의 비슷한 뉘앙스를 가진 슬랭으로 번역할 것.\n"
+        f"조건 3: 원문({source_lang})의 발음과 번역된 문장({target_lang})의 발음을 각각 {ui_lang} 문자로 소리나는 대로 적어줄 것.\n"
+        f"조건 4: 원문에 줄바꿈이 있다면 줄바꿈 위치도 반드시 유지할 것.\n"
+        f"반드시 아래와 같은 블록 형식으로만 응답해 (다른 부가 설명 절대 금지):\n"
+        f"[번역]\n"
+        f"(번역 결과)\n"
+        f"[원본발음]\n"
+        f"(원본 문장의 발음)\n"
+        f"[번역발음]\n"
+        f"(번역된 문장의 발음)"
     )

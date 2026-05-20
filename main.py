@@ -11,7 +11,10 @@ from ui.overlay_window import OverlayWindow
 from ui.settings_window import SettingsWindow
 from ui.tray_icon import TrayIcon
 from ui.api_key_window import ApiKeyWindow
-from config.settings import save_config
+from ui.live_window import LiveTranslatorWindow
+from ui.update_dialog import UpdateController
+from config.settings import save_config, APP_VERSION, GITHUB_REPO
+from core.updater import check_for_updates
 
 class AppController(QObject):
     # 스레드 간 안전한 데이터 전달을 위한 커스텀 시그널
@@ -19,6 +22,7 @@ class AppController(QObject):
     mouse_clicked_signal = pyqtSignal()
     text_extracted_signal = pyqtSignal(str, int, int, int)
     translation_completed_signal = pyqtSignal(str, int, int, int, int) # text, x, y, font_size, req_id
+    live_translation_completed_signal = pyqtSignal(dict, int) # result_dict, req_id
 
     def __init__(self):
         super().__init__()
@@ -26,6 +30,9 @@ class AppController(QObject):
         self.overlay_window = OverlayWindow()
         self.translator = Translator()
         self.current_request_id = 0
+        self.current_live_request_id = 0
+        
+        self.live_window = LiveTranslatorWindow(self.settings_window.config)
         
         # 시그널 연결
         self.drag_completed_signal.connect(self.on_drag_completed_slot)
@@ -33,7 +40,20 @@ class AppController(QObject):
         self.text_extracted_signal.connect(self.on_text_extracted_slot)
         self.translation_completed_signal.connect(self.on_translation_completed_slot)
         
+        self.live_window.translate_requested_signal.connect(self.on_live_translate_requested)
+        self.live_translation_completed_signal.connect(self.on_live_translation_completed)
+        self.settings_window.open_live_window_signal.connect(self.show_live_window)
+        self.settings_window.settings_saved_signal.connect(self.on_settings_saved)
+        
         self.mouse_handler = None
+        
+    def on_settings_saved(self):
+        self.live_window.reload_config(self.settings_window.config)
+        
+    def show_live_window(self):
+        self.live_window.show()
+        self.live_window.raise_()
+        self.live_window.activateWindow()
         
     def start_hook(self):
         # 마우스 훅 시작
@@ -101,9 +121,9 @@ class AppController(QObject):
         source_lang = config.get("source_lang", "日本語")
         target_lang = config.get("target_lang", "한국어")
         
-        # 텍스트 길이에 비례하여 동적으로 타임아웃 시간 계산 (기본값 + 글자당 0.05초 추가)
+        # 텍스트 길이에 비례하여 동적으로 타임아웃 계산 + 재시도(Retry) 대기 시간을 고려하여 10초 여유 추가
         base_timeout = config.get("api_timeout_seconds", 5.0)
-        dynamic_timeout = base_timeout + (len(text) * 0.05)
+        dynamic_timeout = base_timeout + (len(text) * 0.05) + 10.0
         
         # 번역 API 호출 작업을 백그라운드 스레드로 분리
         def translate_job():
@@ -134,6 +154,34 @@ class AppController(QObject):
         # 번역된 결과를 화면에 표시
         self.overlay_window.show_translation(text, x, y, font_size, offset_x, offset_y)
 
+    def on_live_translate_requested(self, text, source_lang, target_lang):
+        config = self.settings_window.config
+        api_key = config.get("gemini_api_key", "")
+        self.translator.update_api_key(api_key)
+        
+        self.current_live_request_id += 1
+        req_id = self.current_live_request_id
+        
+        ui_lang = config.get("ui_lang", "한국어")
+        
+        def live_translate_job():
+            try:
+                result = asyncio.run(self.translator.translate_live(text, source_lang, target_lang, ui_lang))
+            except Exception as e:
+                result = {"translated": "[Error] 번역 실패", "src_pronunciation": "", "tgt_pronunciation": ""}
+            self.live_translation_completed_signal.emit(result, req_id)
+            
+        threading.Thread(target=live_translate_job, daemon=True).start()
+
+    def on_live_translation_completed(self, result, req_id):
+        if req_id != self.current_live_request_id:
+            return
+        self.live_window.update_result(
+            result.get("translated", ""),
+            result.get("src_pronunciation", ""),
+            result.get("tgt_pronunciation", "")
+        )
+
 def main():
     app = QApplication(sys.argv)
     
@@ -141,6 +189,10 @@ def main():
     app.setQuitOnLastWindowClosed(False)
     
     controller = AppController()
+    
+    # 자동 업데이트 확인 (비동기)
+    update_controller = UpdateController(parent_widget=controller.settings_window, quit_callback=app.quit)
+    check_for_updates(APP_VERSION, GITHUB_REPO, update_controller.update_available_signal.emit)
     
     # API 키 확인 및 입력창 표시
     if not controller.settings_window.config.get("gemini_api_key"):
@@ -157,8 +209,13 @@ def main():
     
     tray_icon = TrayIcon(
         settings_window=controller.settings_window, 
+        live_window=controller.live_window,
         app_quit_callback=app.quit
     )
+    
+    # 설정이 저장될 때 트레이 아이콘의 언어도 갱신되도록 연결
+    controller.settings_window.settings_saved_signal.connect(tray_icon.update_ui_texts)
+    
     tray_icon.show()
     
     sys.exit(app.exec())

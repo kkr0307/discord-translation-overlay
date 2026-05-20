@@ -1,10 +1,14 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton, QMessageBox, QLineEdit
+from PyQt6.QtCore import pyqtSignal
 from config.settings import load_config, save_config, UI_TEXT
 
 class SettingsWindow(QWidget):
+    open_live_window_signal = pyqtSignal()
+    settings_saved_signal = pyqtSignal()
+
     def __init__(self):
         super().__init__()
-        self.setFixedSize(300, 180)
+        self.setFixedSize(300, 220)
         
         self.config = load_config()
         self.languages = ["한국어", "English(US)", "日本語", "중국어", "스페인어", "프랑스어"]
@@ -57,6 +61,11 @@ class SettingsWindow(QWidget):
         tgt_layout.addWidget(self.tgt_combo)
         layout.addLayout(tgt_layout)
         
+        # Open Live Window Button
+        self.open_live_btn = QPushButton()
+        self.open_live_btn.clicked.connect(self.open_live_window_signal.emit)
+        layout.addWidget(self.open_live_btn)
+        
         # Save Button
         self.save_btn = QPushButton()
         self.save_btn.clicked.connect(self.save_settings)
@@ -74,6 +83,7 @@ class SettingsWindow(QWidget):
         self.api_label.setText(texts["api_key"])
         self.src_label.setText(texts["src_lang"])
         self.tgt_label.setText(texts["tgt_lang"])
+        self.open_live_btn.setText(texts.get("open_live", "실시간 번역창 열기"))
         self.save_btn.setText(texts["save"])
 
     def save_settings(self):
@@ -87,5 +97,6 @@ class SettingsWindow(QWidget):
         self.config["source_lang"] = self.src_combo.currentText()
         self.config["target_lang"] = self.tgt_combo.currentText()
         save_config(self.config)
+        self.settings_saved_signal.emit()
         QMessageBox.information(self, texts["save_title"], texts["save_success"])
         self.hide()
