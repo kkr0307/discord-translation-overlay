@@ -36,20 +36,24 @@ class Translator:
         if not text:
             return ""
             
+        text_stripped = text.strip()
+        
+        # 1. 알파벳/한글/일어 등 문자형 텍스트가 전혀 없으면 (숫자/기호만 있는 경우) 번역하지 않고 그대로 반환
+        has_letters = any(c.isalpha() for c in text_stripped) or any(0x3000 <= ord(c) <= 0x9FFF for c in text_stripped)
+        if not has_letters:
+            return text_stripped
+            
+        # 2. API 키 체크
         if not self.client:
             return "[Error] API 키가 설정되지 않았습니다. 설정창에서 입력해주세요."
             
         system_prompt = get_system_prompt(source_lang, target_lang)
         
         try:
-            # 기본 모델 시도 (오류 시 내부적으로 최대 2번 더 재시도함)
-            return await self._call_api_with_retry('gemini-3.1-flash-lite', text, system_prompt, max_retries=2)
+            # gemini-3.1-flash-lite 단일 사용 (오류 시 최대 3번 더 재시도함)
+            return await self._call_api_with_retry('gemini-3.1-flash-lite', text_stripped, system_prompt, max_retries=3)
         except Exception as e:
-            try:
-                # 기본 모델이 끝내 실패한 경우 폴백 모델 시도 (오류 시 1번 재시도)
-                return await self._call_api_with_retry('gemini-2.0-flash', text, system_prompt, max_retries=1)
-            except Exception as fallback_e:
-                return f"[Error] 번역 서버(Gemini)에 일시적인 장애가 있습니다. (503)\n잠시 후 다시 드래그해주세요."
+            return f"[Error] 번역 서버(Gemini)에 일시적인 장애가 있습니다.\n잠시 후 다시 드래그해주세요."
 
     async def translate_live(self, text: str, source_lang: str, target_lang: str, ui_lang: str) -> dict:
         if not text:
@@ -61,12 +65,9 @@ class Translator:
         system_prompt = get_live_translation_prompt(source_lang, target_lang, ui_lang)
         
         try:
-            raw_result = await self._call_api_with_retry('gemini-3.1-flash-lite', text, system_prompt, max_retries=2)
+            raw_result = await self._call_api_with_retry('gemini-3.1-flash-lite', text, system_prompt, max_retries=3)
         except Exception as e:
-            try:
-                raw_result = await self._call_api_with_retry('gemini-2.0-flash', text, system_prompt, max_retries=1)
-            except Exception as fallback_e:
-                return {"translated": "[Error] 서버 장애", "src_pronunciation": "", "tgt_pronunciation": ""}
+            return {"translated": "[Error] 번역 서버 장애가 발생했습니다.", "src_pronunciation": "", "tgt_pronunciation": ""}
                 
         result = {"translated": "", "src_pronunciation": "", "tgt_pronunciation": ""}
         current_mode = None

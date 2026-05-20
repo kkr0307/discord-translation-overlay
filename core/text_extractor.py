@@ -14,21 +14,32 @@ async def extract_text_from_selection() -> str:
     # 임시로 클립보드 비우기 (복사 성공 여부 확인용)
     pyperclip.copy('')
     
-    # 2. Ctrl+C 키보드 이벤트 발생
-    pyautogui.hotkey('ctrl', 'c')
+    # 2. Ctrl+C 키보드 이벤트 발생 (입력 지연 400ms -> 20ms 단축)
+    old_pause = pyautogui.PAUSE
+    pyautogui.PAUSE = 0.005
+    try:
+        pyautogui.hotkey('ctrl', 'c')
+    finally:
+        pyautogui.PAUSE = old_pause
     
-    # 3. 클립보드에 텍스트가 들어올 때까지 대기 (최대 0.5초)
+    # 3. 클립보드에 텍스트가 들어올 때까지 대기 (최대 0.45초, 15ms 간격 빠른 폴링)
     extracted_text = ""
-    for _ in range(10):
-        await asyncio.sleep(0.05)
-        extracted_text = pyperclip.paste()
+    for _ in range(30):
+        await asyncio.sleep(0.015)
+        try:
+            extracted_text = pyperclip.paste()
+        except Exception:
+            extracted_text = ""
         if extracted_text:
             break
             
     # 4. 클립보드 원래 데이터로 복구
-    if original_clipboard:
-        pyperclip.copy(original_clipboard)
-    else:
-        pyperclip.copy('')
+    try:
+        if original_clipboard:
+            pyperclip.copy(original_clipboard)
+        else:
+            pyperclip.copy('')
+    except Exception:
+        pass
         
     return extracted_text.strip()

@@ -1,10 +1,12 @@
 import os
 import json
 from pathlib import Path
+import sys
 from dotenv import load_dotenv
 
-# .env 로드 (개발용)
-load_dotenv()
+# .env 로드 (개발용, 배포용 exe 실행 시에는 무시)
+if not getattr(sys, 'frozen', False):
+    load_dotenv()
 
 APP_VERSION = "v1.0.0"
 GITHUB_REPO = "kkr0307/discord-translation-overlay"
@@ -132,32 +134,69 @@ def save_config(config_data):
     except Exception as e:
         print(f"설정 파일 저장 오류: {e}")
 
+def to_english_name(lang: str) -> str:
+    lang = lang.strip()
+    mapping = {
+        "한국어": "Korean",
+        "日本語": "Japanese",
+        "English": "English",
+        "English(US)": "English",
+        "중국어": "Chinese",
+        "中文": "Chinese",
+        "스페인어": "Spanish",
+        "프랑스어": "French"
+    }
+    return mapping.get(lang, lang)
+
+def get_script_name(lang: str) -> str:
+    lang_en = to_english_name(lang)
+    if lang_en == "Korean":
+        return "Hangul (Korean characters)"
+    elif lang_en == "Japanese":
+        return "Katakana"
+    elif lang_en == "English":
+        return "Latin alphabet"
+    elif lang_en == "Chinese":
+        return "Pinyin"
+    else:
+        return "Latin alphabet"
+
 def get_system_prompt(source_lang: str, target_lang: str) -> str:
+    src_en = to_english_name(source_lang)
+    tgt_en = to_english_name(target_lang)
+    tgt_script = get_script_name(target_lang)
+    
     return (
-        f"디스코드/게임 중의 {source_lang} 대화를 {target_lang}로 번역해줘.\n"
-        f"조건 1: 의역을 배제하고 원문에 쓰인 단어들을 최대한 1:1 대응하여 직역할 것. 특히 원문의 어조(존댓말이면 존댓말, 반말이면 반말)를 원래 뉘앙스 그대로 유지할 것. (예: 반말/평서문인데 경어를 붙이지 말 것.)\n"
-        f"조건 2: 'ㅎㅇ', 'ㅋㅋ' 같은 인터넷 신조어나 초성 등은 임의로 정제하지 말고, {target_lang}의 비슷한 뉘앙스를 가진 슬랭으로 번역할 것.\n"
-        f"조건 3: 원문의 {source_lang} 발음을 {target_lang} 문자로 소리나는 대로 적어줄 것.\n"
-        f"조건 4: 원문에 여러 줄의 문장이 있다면, 번역과 발음 모두 원본의 줄바꿈 위치를 똑같이 유지할 것.\n"
-        f"출력 형식은 반드시 아래와 같이 [번역]과 [발음] 블록으로 나누어 출력해 (다른 부가 설명 금지):\n"
+        f"You are a translation assistant. Translate the discord/game chat from {src_en} to {tgt_en}.\n"
+        f"Instructions:\n"
+        f"1. Translate literally (word-for-word translation as much as possible) rather than freely/paraphrasing. Keep the tone and politeness level exactly as the original (e.g., if the original is informal/casual, do not translate into formal/polite language. If it is polite, translate it into polite language).\n"
+        f"2. Keep internet slangs, abbreviations, or initial-consonant slangs (like 'ㅎㅇ', 'ㅋㅋ') and translate them into similar slangs of {tgt_en}.\n"
+        f"3. Write the phonetic pronunciation of the original {src_en} text using {tgt_script} (sound out the pronunciation).\n"
+        f"4. If the original text contains multiple lines, preserve the line breaks in both the translation and the pronunciation.\n\n"
+        f"Format the output strictly as follows (do not add any explanations or introductory text):\n"
         f"[번역]\n"
-        f"(원문의 줄바꿈을 유지한 번역 내용)\n"
+        f"(Translation with preserved line breaks)\n"
         f"[발음]\n"
-        f"(원문의 줄바꿈을 유지한 발음 표기)"
+        f"(Pronunciation with preserved line breaks)"
     )
 
 def get_live_translation_prompt(source_lang: str, target_lang: str, ui_lang: str) -> str:
+    src_en = to_english_name(source_lang)
+    tgt_en = to_english_name(target_lang)
+    ui_script = get_script_name(ui_lang)
+    
     return (
-        f"입력된 {source_lang} 문장을 {target_lang}로 번역해줘.\n"
-        f"조건 1: 원문의 뉘앙스와 어조를 절대 임의로 바꾸지 말 것. (예: 반말이면 반말로, 경어면 경어로. '번역 기능 테스트 중'처럼 평서문/반말인 경우 '데스/마스' 등의 경어를 붙이지 말고 그대로 번역할 것.)\n"
-        f"조건 2: 'ㅎㅇ', 'ㅋㅋ', 초성 등의 인터넷 신조어나 줄임말은 평범한 말(예: 안녕)로 정제하지 말고, {target_lang}의 비슷한 뉘앙스를 가진 슬랭으로 번역할 것.\n"
-        f"조건 3: 원문({source_lang})의 발음과 번역된 문장({target_lang})의 발음을 각각 {ui_lang} 문자로 소리나는 대로 적어줄 것.\n"
-        f"조건 4: 원문에 줄바꿈이 있다면 줄바꿈 위치도 반드시 유지할 것.\n"
-        f"반드시 아래와 같은 블록 형식으로만 응답해 (다른 부가 설명 절대 금지):\n"
+        f"Translate the given text from {src_en} to {tgt_en}.\n"
+        f"Instructions:\n"
+        f"1. Never change the original nuance and tone. Match casual tone to casual tone, and formal to formal. (For example, if the input is casual like '번역 기능 테스트 중', do not add polite endings like Japanese '입니다' or 'です/ます').\n"
+        f"2. Do not normalize internet slang, abbreviations, or initial-consonant slangs (like 'ㅎㅇ', 'ㅋㅋ') to standard speech; translate them to similar slang/nuance in {tgt_en}.\n"
+        f"3. Write the phonetic pronunciation of the original text ({src_en}) and the translated text ({tgt_en}) using {ui_script} (e.g. if the UI language is Korean, write the pronunciations in Hangul characters).\n"
+        f"4. Keep the exact line breaks of the original text.\n\n"
+        f"Format the output strictly as follows (do not add any explanations or introductory text):\n"
         f"[번역]\n"
-        f"(번역 결과)\n"
+        f"(Translated text)\n"
         f"[원본발음]\n"
-        f"(원본 문장의 발음)\n"
+        f"(Pronunciation of original text)\n"
         f"[번역발음]\n"
-        f"(번역된 문장의 발음)"
+        f"(Pronunciation of translated text)"
     )

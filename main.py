@@ -47,6 +47,15 @@ class AppController(QObject):
         
         self.mouse_handler = None
         
+        # 영속 백그라운드 asyncio 루프 생성 및 구동 (TCP Keep-Alive 유지를 통해 속도 개선)
+        self.loop = asyncio.new_event_loop()
+        self.loop_thread = threading.Thread(target=self._run_background_loop, daemon=True)
+        self.loop_thread.start()
+
+    def _run_background_loop(self):
+        asyncio.set_event_loop(self.loop)
+        self.loop.run_forever()
+        
     def on_settings_saved(self):
         self.live_window.reload_config(self.settings_window.config)
         
@@ -75,13 +84,13 @@ class AppController(QObject):
         
     def on_drag_completed_slot(self, x, y, bottom_y):
         # UI 메인 스레드에서 실행
-        # 텍스트 추출 작업 (I/O, asyncio sleep 포함)을 백그라운드 스레드로 분리
-        def extract_job():
-            text = asyncio.run(extract_text_from_selection())
+        # 텍스트 추출 작업 (I/O, asyncio sleep 포함)을 백그라운드 루프로 위임
+        async def extract_job():
+            text = await extract_text_from_selection()
             if text:
                 self.text_extracted_signal.emit(text, x, y, bottom_y)
                 
-        threading.Thread(target=extract_job, daemon=True).start()
+        asyncio.run_coroutine_threadsafe(extract_job(), self.loop)
 
     def on_text_extracted_slot(self, text, x, y, bottom_y):
         config = self.settings_window.config
@@ -125,22 +134,22 @@ class AppController(QObject):
         base_timeout = config.get("api_timeout_seconds", 5.0)
         dynamic_timeout = base_timeout + (len(text) * 0.05) + 10.0
         
-        # 번역 API 호출 작업을 백그라운드 스레드로 분리
-        def translate_job():
+        # 번역 API 호출 작업을 백그라운드 루프로 위임 (TCP connection pool 유지)
+        async def translate_job():
             try:
                 # 무한 대기(hang) 방지를 위해 타임아웃 적용
-                translated = asyncio.run(asyncio.wait_for(
+                translated = await asyncio.wait_for(
                     self.translator.translate(text, source_lang, target_lang),
                     timeout=dynamic_timeout
-                ))
+                )
             except asyncio.TimeoutError:
                 translated = "응답 시간 초과 (Timeout)"
             except Exception as e:
-                translated = "번역 실패 (Error)"
+                translated = f"번역 실패 (Error): {e}"
                 
             self.translation_completed_signal.emit(translated, x, y, font_size, req_id)
             
-        threading.Thread(target=translate_job, daemon=True).start()
+        asyncio.run_coroutine_threadsafe(translate_job(), self.loop)
 
     def on_translation_completed_slot(self, text, x, y, font_size, req_id):
         # 현재 진행 중인 최신 요청이 아니면(이전 요청이면) 무시
@@ -164,14 +173,14 @@ class AppController(QObject):
         
         ui_lang = config.get("ui_lang", "한국어")
         
-        def live_translate_job():
+        async def live_translate_job():
             try:
-                result = asyncio.run(self.translator.translate_live(text, source_lang, target_lang, ui_lang))
+                result = await self.translator.translate_live(text, source_lang, target_lang, ui_lang)
             except Exception as e:
                 result = {"translated": "[Error] 번역 실패", "src_pronunciation": "", "tgt_pronunciation": ""}
             self.live_translation_completed_signal.emit(result, req_id)
             
-        threading.Thread(target=live_translate_job, daemon=True).start()
+        asyncio.run_coroutine_threadsafe(live_translate_job(), self.loop)
 
     def on_live_translation_completed(self, result, req_id):
         if req_id != self.current_live_request_id:
@@ -184,6 +193,31 @@ class AppController(QObject):
 
 def main():
     app = QApplication(sys.argv)
+    
+    # 전역 다크 모드 스타일 적용 (QMessageBox 등에도 상속됨)
+    app.setStyleSheet("""
+        QDialog, QMessageBox, QProgressDialog {
+            background-color: #2f3136;
+            color: #dcddde;
+        }
+        QLabel {
+            color: #dcddde;
+        }
+        QPushButton {
+            background-color: #5865F2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 14px;
+            font-weight: bold;
+        }
+        QPushButton:hover {
+            background-color: #4752C4;
+        }
+        QPushButton:pressed {
+            background-color: #3C45A5;
+        }
+    """)
     
     # 마지막 창(설정창 등)이 닫혀도 프로그램이 종료되지 않도록 설정 (트레이에서 실행 유지)
     app.setQuitOnLastWindowClosed(False)

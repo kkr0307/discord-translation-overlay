@@ -32,7 +32,7 @@ Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl"
 [Tasks]
 ; [QoL] 사용자가 바탕화면 아이콘 생성 및 윈도우 부팅 시 자동 실행 여부를 선택할 수 있게 합니다.
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
-Name: "startup"; Description: "윈도우 시작 시 자동 실행 (Run on startup)"; GroupDescription: "{cm:AdditionalIcons}"
+
 
 [Files]
 Source: "dist\DiscordTranslator.exe"; DestDir: "{app}"; Flags: ignoreversion
@@ -44,9 +44,7 @@ Name: "{group}\Uninstall Discord Translation Overlay"; Filename: "{uninstallexe}
 ; 바탕화면 바로가기 (사용자가 체크했을 때만 생성)
 Name: "{autodesktop}\Discord Translation Overlay"; Filename: "{app}\DiscordTranslator.exe"; Tasks: desktopicon
 
-[Registry]
-; [QoL] 윈도우 시작 시 자동 실행 체크 시 레지스트리 등록 (프로그램 삭제 시 깔끔하게 자동 삭제됨)
-Root: HKCU; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "DiscordTranslationOverlay"; ValueData: """{app}\DiscordTranslator.exe"""; Tasks: startup; Flags: uninsdeletevalue
+
 
 [Run]
 ; 설치 완료 직후 프로그램 자동 실행 (사용자가 체크 해제 가능)

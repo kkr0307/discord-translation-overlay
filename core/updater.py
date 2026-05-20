@@ -37,7 +37,11 @@ def check_for_updates(current_version, repo, callback):
                             download_url = asset.get("browser_download_url")
                             break
                     if download_url:
-                        callback(latest_version, download_url)
+                        # 보안 검증: 공식 GitHub 도메인만 승인
+                        if download_url.startswith("https://github.com/") or download_url.startswith("https://objects.githubusercontent.com/"):
+                            callback(latest_version, download_url)
+                        else:
+                            print(f"Rejected insecure download URL: {download_url}")
         except Exception as e:
             print(f"Update check failed: {e}")
             

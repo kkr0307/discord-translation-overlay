@@ -1,5 +1,5 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QGraphicsDropShadowEffect
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QGraphicsDropShadowEffect, QApplication
+from PyQt6.QtCore import Qt, QTimer, QPoint
 from PyQt6.QtGui import QColor, QPalette
 
 class OverlayWindow(QWidget):
@@ -110,10 +110,32 @@ class OverlayWindow(QWidget):
             
         self.adjustSize()
         
-        # 팝업 박스의 "배경 테두리 상단"이 드래그 상단(y)과 일치하도록 오프셋 보정
+        # 화면 경계 이탈 방지 보정 (오른쪽/아래로 잘리는 현상 차단)
+        screen = QApplication.screenAt(QPoint(int(x), int(y)))
+        if not screen:
+            screen = QApplication.primaryScreen()
+        screen_geo = screen.availableGeometry()
+        
         pos_x = x + offset_x
         pos_y = y - offset_y
-        self.move(pos_x, pos_y)
+        
+        # 우측 경계 초과 시 보정
+        if pos_x + self.width() > screen_geo.right():
+            pos_x = screen_geo.right() - self.width() - 15
+            
+        # 좌측 경계 초과 시 보정
+        if pos_x < screen_geo.left():
+            pos_x = screen_geo.left() + 15
+            
+        # 하단 경계 초과 시 보정
+        if pos_y + self.height() > screen_geo.bottom():
+            pos_y = screen_geo.bottom() - self.height() - 15
+            
+        # 상단 경계 초과 시 보정
+        if pos_y < screen_geo.top():
+            pos_y = screen_geo.top() + 15
+            
+        self.move(int(pos_x), int(pos_y))
         
         self.current_opacity = 1.0
         self.setWindowOpacity(self.current_opacity)
